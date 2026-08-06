@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ติดตามสถานะโครงการ - ฝ่ายบริหารจัดการน้ำสูญเสีย</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-blue-900 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-[96%] mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-700 p-2.5 rounded-xl text-blue-200 shadow-inner">
+                    <i class="fa-solid fa-water text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">ฝ่ายบริหารจัดการน้ำสูญเสีย</h1>
+                    <p class="text-xs text-blue-200">ระบบ Dashboard ติดตามสถานะโครงการสัญญาจ้างและการจัดหา</p>
+                </div>
+            </div>
+            <div class="flex items-center flex-wrap gap-2.5">
+                <div id="sync-status" class="text-xs px-3.5 py-2 rounded-xl bg-blue-800 text-blue-200 flex items-center gap-2 border border-blue-700 shadow-sm">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>เชื่อมต่อ Google Sheets แล้ว</span>
+                </div>
+                <button type="button" onclick="toggleSidebar()" class="bg-blue-800 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-xl shadow transition flex items-center gap-2 cursor-pointer" title="ซ่อน/แสดงแถบตัวกรอง">
+                    <i class="fa-solid fa-columns"></i> ซ่อน/แสดงตัวกรอง
+                </button>
+                <button type="button" onclick="openHolidayModal()" class="bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium px-4 py-2 rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-calendar-days"></i> จัดการวันหยุด
+                </button>
+                <button type="button" onclick="openProjectModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-plus"></i> เพิ่มโครงการใหม่
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-[96%] mx-auto px-4 py-6 flex-1 w-full flex flex-col lg:flex-row gap-6 items-start">
+        
+        <!-- Left Filter Pane (Optimized width and clear readability with ID for toggle) -->
+        <aside id="filter-sidebar" class="w-full lg:w-80 shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-fit flex flex-col gap-5 sticky top-24 transition-all duration-300">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="font-bold text-slate-700 flex items-center gap-2 text-base">
+                    <i class="fa-solid fa-filter text-blue-600"></i> ตัวกรองข้อมูล
+                </h2>
+                <button type="button" onclick="resetFilters()" class="text-xs text-blue-600 hover:underline font-medium cursor-pointer">ล้างค่าทั้งหมด</button>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">ค้นหาโครงการ / เลขที่สัญญา</label>
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" id="filter-search" oninput="applyFilters()" placeholder="พิมพ์ค้นหา..." class="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">ปีงบประมาณ (2570 - 2575)</label>
+                <select id="filter-year" onchange="applyFilters()" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition">
+                    <option value="">ทั้งหมด</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">ประเภทงบประมาณ</label>
+                <select id="filter-budget-type" onchange="applyFilters()" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition">
+                    <option value="">ทั้งหมด</option>
+                    <option value="งบทำการ">งบทำการ</option>
+                    <option value="งบลงทุน">งบลงทุน</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">ประเภทงาน</label>
+                <select id="filter-work-type" onchange="applyFilters()" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition">
+                    <option value="">ทั้งหมด</option>
+                    <option value="ซื้อ">ซื้อ</option>
+                    <option value="จ้าง">จ้าง</option>
+                    <option value="จ้างก่อสร้าง">จ้างก่อสร้าง</option>
+                    <option value="เช่า">เช่า</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1.5">วิธีการจัดหา</label>
+                <select id="filter-procurement" onchange="applyFilters()" class="w-full py-2.5 px-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition">
+                    <option value="">ทั้งหมด</option>
+                    <option value="วิธี E-bidding">วิธี E-bidding</option>
+                    <option value="วิธีเฉพาะเจาะจงไม่เกิน 5 แสนบาท">วิธีเฉพาะเจาะจงไม่เกิน 5 แสนบาท</option>
+                </select>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col gap-6 w-full min-w-0">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">จำนวนโครงการทั้งหมด</p>
+                        <h3 id="kpi-total" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl shadow-inner">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">งบประมาณรวม (บาท)</p>
+                        <h3 id="kpi-budget" class="text-xl font-bold text-slate-800 mt-1">0.00</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl shadow-inner">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs text-slate-500 font-medium">สถานะระบบ</p>
+                        <h3 class="text-lg font-bold text-blue-900 mt-1">พร้อมใช้งาน</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-xl shadow-inner">
+                        <i class="fa-solid fa-timeline"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-1 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="font-bold text-slate-800 text-lg">รายการโครงการ</h2>
+                        <p class="text-xs text-slate-500">แสดงแผน/คาดการณ์ (คำนวณวันทำการเว้นวันหยุดเสาร์-อาทิตย์และวันหยุดนักขัตฤกษ์), แล้วเสร็จจริง และสถานะล่าช้า/เร็วกว่ากำหนด</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="fetchDataFromGoogleSheet()" id="sync-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3.5 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer">
+                            <i class="fa-solid fa-rotate"></i> โหลดข้อมูลใหม่
+                        </button>
+                    </div>
+                </div>
+
+                <div id="projects-matrix-container" class="p-6 space-y-8 overflow-x-auto flex-1 bg-slate-50/50">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <div class="p-4 border-t border-slate-200 bg-white text-xs text-slate-600 space-y-1">
+                    <div class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-circle-info text-blue-600 mr-1"></i> หมายเหตุ:</div>
+                    <p>• <strong>แผน/คาดการณ์</strong> คือ เป็นแผนที่เกิดจากการคำนวณตั้งแต่วันเพิ่ม/บันทึกโครงการ</p>
+                    <p>• <strong>แล้วเสร็จจริง</strong> คือ กรอกวันที่แล้วเสร็จจริง สีเขียวคือ แล้วเสร็จ สีเหลือง คือ อยู่ระหว่างดำเนินการ</p>
+                    <p>• <strong>ถ้าล่าช้า</strong> ใส่ตัวหนังสือสีแดง พร้อมระบุจำนวนวัน</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="holiday-modal" style="display: none;" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden my-8">
+            <div class="bg-amber-800 text-white p-5 flex justify-between items-center">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days"></i> จัดการวันหยุดนักขัตฤกษ์และวันหยุดพิเศษ
+                </h3>
+                <button type="button" onclick="closeHolidayModal()" class="text-amber-200 hover:text-white text-xl cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                <form id="holiday-form" onsubmit="handleHolidaySubmit(event)" class="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-3">
+                    <h4 class="text-xs font-bold text-amber-900"><i class="fa-solid fa-plus-circle"></i> เพิ่มวันหยุดพิเศษ/นักขัตฤกษ์เพิ่มเติม</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-amber-800 mb-1">วันที่หยุด <span class="text-rose-500">*</span></label>
+                            <input type="date" id="holiday-date" required class="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-amber-800 mb-1">ชื่อวันหยุด / รายละเอียด <span class="text-rose-500">*</span></label>
+                            <input type="text" id="holiday-desc" required placeholder="เช่น วันหยุดชดเชยพิเศษ" class="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-1">
+                        <button type="submit" class="px-4 py-2 bg-amber-700 hover:bg-amber-600 text-white text-xs font-medium rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-save"></i> บันทึกวันหยุดนี้
+                        </button>
+                    </div>
+                </form>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
+                        <span>รายการวันหยุดเพิ่มเติมที่คุณบันทึกไว้</span>
+                        <span id="custom-holiday-count" class="text-[11px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-600">0 รายการ</span>
+                    </h4>
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3">วันที่</th>
+                                    <th class="p-3">รายละเอียดวันหยุด</th>
+                                    <th class="p-3 text-center w-20">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="custom-holiday-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button type="button" onclick="closeHolidayModal()" class="px-5 py-2 text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition cursor-pointer">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-modal" style="display: none;" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden my-8">
+            <div class="bg-blue-900 text-white p-5 flex justify-between items-center">
+                <h3 id="modal-title" class="font-bold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-file-contract"></i> เพิ่มโครงการสัญญาจ้างใหม่
+                </h3>
+                <button type="button" onclick="closeProjectModal()" class="text-blue-200 hover:text-white text-xl cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="project-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="edit-index" value="">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">เลขที่โครงการ / สัญญา <span class="text-rose-500">*</span></label>
+                        <input type="text" id="proj-no" required placeholder="เช่น WLM-2570-001" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">ปีงบประมาณ <span class="text-rose-500">*</span></label>
+                        <input type="number" id="proj-year" required value="2570" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">ชื่อโครงการ <span class="text-rose-500">*</span></label>
+                    <textarea id="proj-name" required rows="2" placeholder="ระบุชื่อโครงการ..." class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">ประเภทงบประมาณ <span class="text-rose-500">*</span></label>
+                        <select id="proj-budget-type" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                            <option value="งบทำการ">งบทำการ</option>
+                            <option value="งบลงทุน">งบลงทุน</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">ประเภทงาน <span class="text-rose-500">*</span></label>
+                        <select id="proj-work-type" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                            <option value="ซื้อ">ซื้อ</option>
+                            <option value="จ้าง">จ้าง</option>
+                            <option value="จ้างก่อสร้าง">จ้างก่อสร้าง</option>
+                            <option value="เช่า">เช่า</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">งบประมาณ (บาท) <span class="text-rose-500">*</span></label>
+                        <input type="number" step="0.01" id="proj-budget" required placeholder="0.00" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">วิธีการจัดหา <span class="text-rose-500">*</span></label>
+                        <select id="proj-procurement" onchange="onProcurementChange()" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                            <option value="วิธี E-bidding">วิธี E-bidding</option>
+                            <option value="วิธีเฉพาะเจาะจงไม่เกิน 5 แสนบาท">วิธีเฉพาะเจาะจงไม่เกิน 5 แสนบาท</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">ขั้นตอนปัจจุบัน <span class="text-rose-500">*</span></label>
+                        <select id="proj-current-step" class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-3">
+                    <h4 class="text-xs font-bold text-emerald-900"><i class="fa-solid fa-calendar-check"></i> กำหนดวันเริ่มต้นและแผนการดำเนินงานแต่ละขั้นตอน</h4>
+                    <div>
+                        <label class="block text-xs font-medium text-emerald-800 mb-1">วันที่เริ่มต้นโครงการ (ใช้อ้างอิงคำนวณขั้นแรก)</label>
+                        <input type="date" id="proj-start-date" class="w-full sm:w-64 px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="text-[11px] text-emerald-800 font-medium pt-1">
+                        เลือกรูปแบบแผน: เลือกได้ว่าจะกรอกเป็น <span class="bg-blue-200 px-1.5 py-0.5 rounded text-blue-900">ระยะเวลา (วันทำการ/วันปฏิทิน)</span> หรือ <span class="bg-purple-200 px-1.5 py-0.5 rounded text-purple-900">ระบุวันที่สิ้นสุด</span> พร้อมกรอก <span class="bg-amber-200 px-1.5 py-0.5 rounded text-amber-900">วันที่แล้วเสร็จจริง</span>
+                    </div>
+                    <div id="step-planning-container" class="space-y-2 pt-2 border-t border-emerald-200/60">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div>
+                        <h4 class="text-xs font-bold text-amber-900"><i class="fa-solid fa-lock"></i> ยืนยันรหัสผ่านก่อนบันทึกข้อมูล</h4>
+                        <p class="text-[11px] text-amber-700">กรุณากรอกรหัสผ่าน 4 หลัก เพื่อบันทึกหรือแก้ไขข้อมูล (รหัส: 1698)</p>
+                    </div>
+                    <div class="w-full sm:w-auto">
+                        <input type="password" id="auth-password" required maxlength="4" placeholder="รหัสผ่าน 4 หลัก" class="w-full sm:w-36 px-3 py-2 text-sm bg-white border border-amber-300 rounded-xl text-center focus:outline-none focus:border-amber-500 font-bold tracking-widest">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeProjectModal()" class="px-5 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition cursor-pointer">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl shadow transition flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-save"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="alert-modal" style="display: none;" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center space-y-4">
+            <div id="alert-icon" class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <div>
+                <h3 id="alert-title" class="font-bold text-lg text-slate-800">แจ้งเตือน</h3>
+                <p id="alert-message" class="text-xs text-slate-500 mt-1">ข้อความแจ้งเตือน...</p>
+            </div>
+            <button type="button" onclick="closeAlert()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition cursor-pointer">ตกลง</button>
+        </div>
+    </div>
+
+    <script>
+        // แทนที่ URL ของ Google Apps Script ที่นี่
+        const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzKUh7tbHxrS9Zz48Fna4clyEfu5hmR_uONF-YjoLfqvfGB8gJoAsJ2XgJ3y9LjNWNa/exec";
+
+        const STEPS_E_BIDDING = [
+            "อนุมัติงบ", "TOR", "ราคากลาง", "ร่างประกาศ", 
+            "ประกาศเชิญชวน", "พิจารณาผล", "อุทธรณ์", "จัดทำค้ำ/เตรียมลงนาม", "ลงนาม"
+        ];
+
+        const STEPS_SPECIFIC = [
+            "อนุมัติงบ", "TOR", "ราคากลาง", "รายงานขอซื้อ/จ้าง", 
+            "ออกคำสั่งแต่งตั้ง", "พิจารณาผล", "จัดทำข้อตกลง", "ลงนาม"
+        ];
+
+        const DEFAULT_DURATIONS_E_BIDDING = {
+            "อนุมัติงบ": { days: 10, dayType: "วันทำการ" },
+            "TOR": { days: 15, dayType: "วันทำการ" },
+            "ราคากลาง": { days: 10, dayType: "วันทำการ" },
+            "ร่างประกาศ": { days: 5, dayType: "วันทำการ" },
+            "ประกาศเชิญชวน": { days: 20, dayType: "วันปฏิทิน" },
+            "พิจารณาผล": { days: 15, dayType: "วันทำการ" },
+            "อุทธรณ์": { days: 7, dayType: "วันปฏิทิน" },
+            "จัดทำค้ำ/เตรียมลงนาม": { days: 7, dayType: "วันทำการ" },
+            "ลงนาม": { days: 3, dayType: "วันทำการ" }
+        };
+
+        const DEFAULT_DURATIONS_SPECIFIC = {
+            "อนุมัติงบ": { days: 7, dayType: "วันทำการ" },
+            "TOR": { days: 10, dayType: "วันทำการ" },
+            "ราคากลาง": { days: 7, dayType: "วันทำการ" },
+            "รายงานขอซื้อ/จ้าง": { days: 3, dayType: "วันทำการ" },
+            "ออกคำสั่งแต่งตั้ง": { days: 3, dayType: "วันทำการ" },
+            "พิจารณาผล": { days: 10, dayType: "วันทำการ" },
+            "จัดทำข้อตกลง": { days: 5, dayType: "วันทำการ" },
+            "ลงนาม": { days: 2, dayType: "วันทำการ" }
+        };
+        
+        // ฐานข้อมูลวันหยุดนักขัตฤกษ์และวันหยุดพิเศษทางการเริ่มต้น (ครอบคลุมปี 2025 - 2027)
+        const DEFAULT_THAI_HOLIDAYS = new Set([
+            "2025-01-01", "2025-01-02", "2025-02-12", "2025-04-07", "2025-04-14", "2025-04-15", 
+            "2025-05-01", "2025-05-05", "2025-05-12", "2025-06-02", "2025-06-03", "2025-07-10", 
+            "2025-07-28", "2025-08-11", "2025-08-12", "2025-10-13", "2025-10-23", "2025-12-05", 
+            "2025-12-10", "2025-12-31",
+            "2026-01-01", "2026-01-02", "2026-03-03", "2026-04-06", "2026-04-13", "2026-04-14", 
+            "2026-04-15", "2026-05-01", "2026-05-04", "2026-06-01", "2026-06-03", "2026-07-28", 
+            "2026-07-29", "2026-08-12", "2026-10-13", "2026-10-16", "2026-10-23", "2026-12-07", 
+            "2026-12-10", "2026-12-31",
+            "2027-01-01", "2027-04-06", "2027-04-13", "2027-04-14", "2027-04-15", "2027-05-01", 
+            "2027-05-04", "2027-06-03", "2027-07-19", "2027-07-28", "2027-08-12", "2027-10-13", 
+            "2027-10-25", "2027-12-06", "2027-12-10", "2027-12-31"
+        ]);
+
+        let customHolidays = [];
+
+        function loadCustomHolidays() {
+            try {
+                const saved = localStorage.getItem('wlm_custom_holidays');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) customHolidays = parsed;
+                }
+            } catch(e) {
+                console.error("Load custom holidays error:", e);
+                customHolidays = [];
+            }
+        }
+
+        function saveCustomHolidays() {
+            try {
+                localStorage.setItem('wlm_custom_holidays', JSON.stringify(customHolidays));
+            } catch(e) {
+                console.error("Save custom holidays error:", e);
+            }
+        }
+
+        function isThaiHoliday(dateObj) {
+            const yyyy = dateObj.getFullYear();
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+            
+            if (DEFAULT_THAI_HOLIDAYS.has(dateStr)) return true;
+            if (customHolidays.some(h => h.date === dateStr)) return true;
+            
+            return false;
+        }
+
+        let projects = [];
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('wlm_projects_data', JSON.stringify(projects));
+            } catch(e) {
+                console.error("Local Storage Save Error:", e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('wlm_projects_data');
+                if (saved) {
+                    const parsedData = JSON.parse(saved);
+                    if (Array.isArray(parsedData)) {
+                        projects = parsedData;
+                    }
+                }
+            } catch(e) {
+                console.error("Local Storage Load Error:", e);
+            }
+        }
+
+        window.onload = function() {
+            loadFromLocalStorage();
+            loadCustomHolidays();
+            populateYearFilter();
+            updateDashboard();
+            
+            if (googleScriptUrl && !googleScriptUrl.includes("YOUR_DEPLOY_URL_HERE")) {
+                fetchDataFromGoogleSheet();
+            }
+        };
+
+        function openHolidayModal() {
+            renderCustomHolidayTable();
+            document.getElementById('holiday-modal').style.display = 'flex';
+        }
+
+        function closeHolidayModal() {
+            document.getElementById('holiday-modal').style.display = 'none';
+        }
+
+        function handleHolidaySubmit(event) {
+            event.preventDefault();
+            const dateVal = document.getElementById('holiday-date').value;
+            const descVal = document.getElementById('holiday-desc').value.trim();
+
+            if (!dateVal || !descVal) return;
+
+            if (customHolidays.some(h => h.date === dateVal)) {
+                showAlert("วันที่ซ้ำ", "มีวันหยุดวันนี้ในระบบแล้ว", "error");
+                return;
+            }
+
+            customHolidays.push({ date: dateVal, desc: descVal });
+            customHolidays.sort((a, b) => new Date(a.date) - new Date(b.date));
+            saveCustomHolidays();
+
+            document.getElementById('holiday-form').reset();
+            renderCustomHolidayTable();
+            updateDashboard();
+            showAlert("บันทึกสำเร็จ", "เพิ่มวันหยุดพิเศษเรียบร้อยแล้ว ระบบได้นำไปคำนวณใหม่ทันที", "success");
+        }
+
+        function deleteCustomHoliday(dateStr) {
+            customHolidays = customHolidays.filter(h => h.date !== dateStr);
+            saveCustomHolidays();
+            renderCustomHolidayTable();
+            updateDashboard();
+        }
+
+        function renderCustomHolidayTable() {
+            const tbody = document.getElementById('custom-holiday-tbody');
+            const countEl = document.getElementById('custom-holiday-count');
+            tbody.innerHTML = "";
+            countEl.innerText = `${customHolidays.length} รายการ`;
+
+            if (customHolidays.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">ยังไม่มีวันหยุดพิเศษที่คุณเพิ่ม</td></tr>`;
+                return;
+            }
+
+            customHolidays.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-100 hover:bg-slate-50";
+                
+                let formattedDate = h.date;
+                try {
+                    formattedDate = new Date(h.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                } catch(e) {}
+
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-700">${formattedDate}</td>
+                    <td class="p-3 text-slate-600">${h.desc}</td>
+                    <td class="p-3 text-center">
+                        <button type="button" onclick="deleteCustomHoliday('${h.date}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1 rounded-lg text-xs transition cursor-pointer" title="ลบวันหยุดนี้">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showAlert(title, message, type = "info") {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            const iconEl = document.getElementById('alert-icon');
+            if (type === "success") {
+                iconEl.className = "w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto";
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            } else if (type === "error") {
+                iconEl.className = "w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-3xl mx-auto";
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+            } else {
+                iconEl.className = "w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto";
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+            }
+            document.getElementById('alert-modal').style.display = 'flex';
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').style.display = 'none';
+        }
+
+        function openProjectModal(isEdit = false, id = null) {
+            try {
+                const modal = document.getElementById('project-modal');
+                if (!modal) return;
+                modal.style.display = 'flex';
+
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (isEdit && id) {
+                    document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> แก้ไขข้อมูลโครงการ';
+                    const p = projects.find(item => String(item.id) === String(id));
+                    if (p) {
+                        document.getElementById('edit-index').value = p.id;
+                        document.getElementById('proj-no').value = p.id;
+                        document.getElementById('proj-no').disabled = true;
+                        document.getElementById('proj-year').value = p.year || "2570";
+                        document.getElementById('proj-name').value = p.name || "";
+                        document.getElementById('proj-budget-type').value = p.budgetType || "งบทำการ";
+                        document.getElementById('proj-work-type').value = p.workType || "ซื้อ";
+                        document.getElementById('proj-budget').value = p.budget || "";
+                        document.getElementById('proj-procurement').value = p.procurement || "วิธี E-bidding";
+                        document.getElementById('proj-start-date').value = p.projectStartDate || todayStr;
+                        onProcurementChange(p.stepDurations, p.actualDates, p.stepInputModes, p.specificDates);
+                        document.getElementById('proj-current-step').value = p.currentStep || "";
+                    }
+                } else {
+                    document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-file-contract"></i> เพิ่มโครงการสัญญาจ้างใหม่';
+                    const form = document.getElementById('project-form');
+                    if (form) form.reset();
+                    document.getElementById('edit-index').value = "";
+                    document.getElementById('proj-no').disabled = false;
+                    document.getElementById('proj-year').value = "2570";
+                    document.getElementById('proj-start-date').value = todayStr;
+                    onProcurementChange();
+                }
+            } catch (err) {
+                console.error("Open modal error:", err);
+                showAlert("เกิดข้อผิดพลาด", "ไม่สามารถเปิดหน้าต่างได้: " + err.message, "error");
+            }
+        }
+
+        function closeProjectModal() {
+            document.getElementById('project-modal').style.display = 'none';
+        }
+
+        function onProcurementChange(savedDurations = null, savedActuals = null, savedTypes = null, savedSpecificDates = null) {
+            const proc = document.getElementById('proj-procurement').value;
+            const stepSelect = document.getElementById('proj-current-step');
+            stepSelect.innerHTML = "";
+            const steps = proc === "วิธี E-bidding" ? STEPS_E_BIDDING : STEPS_SPECIFIC;
+            steps.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                stepSelect.appendChild(opt);
+            });
+
+            renderStepPlanningInputs(steps, 
+                savedDurations || (proc === "วิธี E-bidding" ? DEFAULT_DURATIONS_E_BIDDING : DEFAULT_DURATIONS_SPECIFIC),
+                savedActuals || {},
+                savedTypes || {},
+                savedSpecificDates || {}
+            );
+        }
+
+        function renderStepPlanningInputs(steps, durationsObj, actualsObj, typesObj, specificDatesObj) {
+            const container = document.getElementById('step-planning-container');
+            container.innerHTML = "";
+
+            steps.forEach((s, idx) => {
+                let defaultItem = { days: 10, dayType: "วันทำการ" };
+                if (durationsObj && durationsObj[s] !== undefined) {
+                    if (typeof durationsObj[s] === 'object' && durationsObj[s] !== null) {
+                        defaultItem = durationsObj[s];
+                    } else {
+                        defaultItem = { days: Number(durationsObj[s]) || 10, dayType: "วันทำการ" };
+                    }
+                }
+                let inputMode = (typesObj && typesObj[s]) ? typesObj[s] : "days";
+                let specificDateVal = (specificDatesObj && specificDatesObj[s]) ? specificDatesObj[s] : "";
+                let actualVal = (actualsObj && actualsObj[s]) ? actualsObj[s] : "";
+
+                const row = document.createElement('div');
+                row.className = "bg-white p-3 rounded-xl border border-emerald-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs";
+                row.innerHTML = `
+                    <div class="w-full md:w-36 font-bold text-emerald-900 truncate" title="${s}">
+                        <i class="fa-solid fa-circle-dot text-[8px] text-emerald-600 mr-1.5"></i> ${s}
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 flex-1 w-full md:w-auto">
+                        <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-1">
+                            <span class="text-[10px] text-slate-500 px-1">รูปแบบ:</span>
+                            <select data-step-index="${idx}" data-field="mode" onchange="toggleStepInputMode(${idx})" class="text-[11px] bg-transparent font-medium text-blue-900 focus:outline-none">
+                                <option value="days" ${inputMode === 'days' ? 'selected' : ''}>ระยะเวลา (วัน)</option>
+                                <option value="date" ${inputMode === 'date' ? 'selected' : ''}>ระบุวันที่สิ้นสุด</option>
+                            </select>
+                        </div>
+
+                        <div id="wrap-days-${idx}" class="flex items-center gap-1.5 ${inputMode === 'date' ? 'hidden' : ''}">
+                            <input type="number" min="1" data-step-index="${idx}" data-field="days" value="${defaultItem.days}" class="w-14 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-center focus:outline-none focus:border-blue-500">
+                            <select data-step-index="${idx}" data-field="daytype" class="text-[10px] px-2 py-1 bg-slate-50 border border-slate-200 rounded focus:outline-none focus:border-blue-500">
+                                <option value="วันทำการ" ${defaultItem.dayType === 'วันทำการ' ? 'selected' : ''}>วันทำการ</option>
+                                <option value="วันปฏิทิน" ${defaultItem.dayType === 'วันปฏิทิน' ? 'selected' : ''}>วันปฏิทิน</option>
+                            </select>
+                        </div>
+
+                        <div id="wrap-date-${idx}" class="flex items-center gap-1.5 ${inputMode === 'days' ? 'hidden' : ''}">
+                            <input type="date" data-step-index="${idx}" data-field="specificDate" value="${specificDateVal}" class="px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 w-full md:w-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                        <span class="text-[10px] text-amber-800 font-semibold">เสร็จจริง:</span>
+                        <input type="date" data-step-index="${idx}" data-field="actual" value="${actualVal}" class="px-2 py-1 bg-amber-50/50 border border-amber-200 rounded text-[11px] focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function toggleStepInputMode(idx) {
+            const daysWrap = document.getElementById(`wrap-days-${idx}`);
+            const dateWrap = document.getElementById(`wrap-date-${idx}`);
+            const modeSelect = document.querySelector(`select[data-step-index="${idx}"][data-field="mode"]`);
+            
+            if (modeSelect && modeSelect.value === 'days') {
+                if (daysWrap) { daysWrap.classList.remove('hidden'); daysWrap.style.display = 'flex'; }
+                if (dateWrap) { dateWrap.classList.add('hidden'); dateWrap.style.display = 'none'; }
+            } else {
+                if (daysWrap) { daysWrap.classList.add('hidden'); daysWrap.style.display = 'none'; }
+                if (dateWrap) { dateWrap.classList.remove('hidden'); dateWrap.style.display = 'flex'; }
+            }
+        }
+
+        function addDaysToDate(dateStr, days, dayType) {
+            let d = new Date(dateStr);
+            if (isNaN(d.getTime())) d = new Date();
+            d.setHours(0,0,0,0);
+
+            if (dayType === "วันทำการ") {
+                let added = 0;
+                while (added < days) {
+                    d.setDate(d.getDate() + 1);
+                    const dayOfWeek = d.getDay();
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isThaiHoliday(d)) {
+                        added++;
+                    }
+                }
+            } else {
+                d.setDate(d.getDate() + days);
+            }
+            return d;
+        }
+
+        function computeProjectMatrix(p) {
+            const steps = p.procurement === "วิธี E-bidding" ? STEPS_E_BIDDING : STEPS_SPECIFIC;
+            let currentBaseDate = new Date();
+            currentBaseDate.setHours(0,0,0,0);
+
+            if (p.projectStartDate) {
+                const parsed = new Date(p.projectStartDate);
+                if (!isNaN(parsed.getTime())) currentBaseDate = parsed;
+            }
+
+            let result = {};
+            let runningDate = new Date(currentBaseDate.getTime());
+            let stepInputModes = p.stepInputModes || {};
+            let specificDates = p.specificDates || {};
+
+            steps.forEach((stepName) => {
+                let planEndDate;
+                let mode = stepInputModes[stepName] || "days";
+
+                if (mode === "date" && specificDates[stepName]) {
+                    planEndDate = new Date(specificDates[stepName]);
+                    if (isNaN(planEndDate.getTime())) {
+                        planEndDate = new Date(runningDate.getTime());
+                    }
+                } else {
+                    let stepConfig = { days: 10, dayType: "วันทำการ" };
+                    if (p.stepDurations && p.stepDurations[stepName]) {
+                        if (typeof p.stepDurations[stepName] === 'object') {
+                            stepConfig = p.stepDurations[stepName];
+                        } else {
+                            stepConfig = { days: Number(p.stepDurations[stepName]) || 10, dayType: "วันทำการ" };
+                        }
+                    }
+                    planEndDate = addDaysToDate(runningDate.toISOString().split('T')[0], Number(stepConfig.days), stepConfig.dayType);
+                }
+
+                let planStr = planEndDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+
+                let actualDateStr = p.actualDates && p.actualDates[stepName] ? p.actualDates[stepName] : "";
+                let actualFormatted = "";
+                let delayDays = 0;
+                let statusTextDesc = "-";
+
+                if (actualDateStr) {
+                    let actualDate = new Date(actualDateStr);
+                    actualFormatted = actualDate.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                    
+                    let diffTime = actualDate - planEndDate;
+                    delayDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (delayDays > 0) {
+                        statusTextDesc = `ล่าช้า ${delayDays} วัน`;
+                    } else if (delayDays < 0) {
+                        statusTextDesc = `เร็วกว่ากำหนด ${Math.abs(delayDays)} วัน`;
+                    } else {
+                        statusTextDesc = `ตามกำหนด`;
+                    }
+                } else {
+                    statusTextDesc = "อยู่ระหว่างดำเนินการ";
+                }
+
+                result[stepName] = {
+                    plan: planStr,
+                    actual: actualFormatted,
+                    actualRaw: actualDateStr,
+                    delay: delayDays,
+                    statusText: statusTextDesc
+                };
+
+                runningDate = new Date(planEndDate.getTime());
+            });
+
+            return { steps, result };
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const pass = document.getElementById('auth-password').value;
+            if (pass !== "1698") {
+                showAlert("รหัสผ่านไม่ถูกต้อง", "กรุณากรอกรหัสผ่านยืนยันให้ถูกต้อง (Password: 1698)", "error");
+                return;
+            }
+
+            const proc = document.getElementById('proj-procurement').value;
+            const steps = proc === "วิธี E-bidding" ? STEPS_E_BIDDING : STEPS_SPECIFIC;
+            const stepDurations = {};
+            const actualDates = {};
+            const stepInputModes = {};
+            const specificDates = {};
+
+            steps.forEach((s, idx) => {
+                const modeSelect = document.querySelector(`select[data-step-index="${idx}"][data-field="mode"]`);
+                const mode = modeSelect ? modeSelect.value : "days";
+                stepInputModes[s] = mode;
+
+                if (mode === "days") {
+                    const dayInput = document.querySelector(`input[data-step-index="${idx}"][data-field="days"]`);
+                    const typeSelect = document.querySelector(`select[data-step-index="${idx}"][data-field="daytype"]`);
+                    stepDurations[s] = {
+                        days: dayInput ? parseInt(dayInput.value) || 10 : 10,
+                        dayType: typeSelect ? typeSelect.value : "วันทำการ"
+                    };
+                } else {
+                    const dateInput = document.querySelector(`input[data-step-index="${idx}"][data-field="specificDate"]`);
+                    if (dateInput && dateInput.value) {
+                        specificDates[s] = dateInput.value;
+                    }
+                }
+
+                const actualInput = document.querySelector(`input[data-step-index="${idx}"][data-field="actual"]`);
+                if (actualInput && actualInput.value) {
+                    actualDates[s] = actualInput.value;
+                }
+            });
+
+            const editId = document.getElementById('edit-index').value;
+            const projData = {
+                action: "upsert",
+                id: document.getElementById('proj-no').value.trim(),
+                year: document.getElementById('proj-year').value,
+                name: document.getElementById('proj-name').value.trim(),
+                budgetType: document.getElementById('proj-budget-type').value,
+                workType: document.getElementById('proj-work-type').value,
+                budget: parseFloat(document.getElementById('proj-budget').value) || 0,
+                procurement: proc,
+                currentStep: document.getElementById('proj-current-step').value,
+                projectStartDate: document.getElementById('proj-start-date').value || new Date().toISOString().split('T')[0],
+                stepDurations: stepDurations,
+                stepInputModes: stepInputModes,
+                specificDates: specificDates,
+                actualDates: actualDates
+            };
+
+            if (editId) {
+                const idx = projects.findIndex(p => String(p.id) === String(editId));
+                if (idx !== -1) {
+                    projects[idx] = projData;
+                }
+            } else {
+                if (projects.some(p => String(p.id) === String(projData.id))) {
+                    showAlert("เลขที่โครงการซ้ำ", "มีเลขที่โครงการนี้อยู่ในระบบแล้ว กรุณาใช้เลขที่อื่น", "error");
+                    return;
+                }
+                projects.push(projData);
+            }
+
+            saveToLocalStorage();
+            closeProjectModal();
+            populateYearFilter();
+            updateDashboard();
+            
+            if (googleScriptUrl && !googleScriptUrl.includes("YOUR_DEPLOY_URL_HERE")) {
+                sendDataToGoogleSheet(projData);
+            } else {
+                showAlert("บันทึกสำเร็จ", "บันทึกข้อมูลเรียบร้อยแล้ว (สำรองในเครื่อง)", "success");
+            }
+        }
+
+        function deleteProject(id) {
+            const pass = prompt("กรุณากรอกรหัสผ่าน (1698) เพื่อยืนยันการลบข้อมูล:");
+            if (pass !== "1698") {
+                if (pass !== null) showAlert("รหัสผ่านไม่ถูกต้อง", "ไม่สามารถลบข้อมูลได้", "error");
+                return;
+            }
+            
+            const deletePayload = { action: "delete", id: String(id) };
+            projects = projects.filter(p => String(p.id) !== String(id));
+            
+            saveToLocalStorage();
+            populateYearFilter();
+            updateDashboard();
+            
+            if (googleScriptUrl && !googleScriptUrl.includes("YOUR_DEPLOY_URL_HERE")) {
+                sendDataToGoogleSheet(deletePayload);
+            } else {
+                showAlert("ลบสำเร็จ", "ลบโครงการออกจากระบบแล้ว", "success");
+            }
+        }
+
+        function populateYearFilter() {
+            const yearSelect = document.getElementById('filter-year');
+            const currentVal = yearSelect.value;
+            yearSelect.innerHTML = '<option value="">ทั้งหมด</option>';
+            
+            // กำหนดช่วงปีงบประมาณเริ่มต้นตั้งแต่ 2570 ถึง 2575 ตามความต้องการ
+            const presetYears = ["2570", "2571", "2572", "2573", "2574", "2575"];
+            const yearsSet = new Set([...presetYears, ...projects.map(p => String(p.year))]);
+            
+            Array.from(yearsSet).sort().reverse().forEach(y => {
+                if (y) {
+                    const opt = document.createElement('option');
+                    opt.value = y;
+                    opt.textContent = y;
+                    yearSelect.appendChild(opt);
+                }
+            });
+            yearSelect.value = currentVal;
+        }
+
+        function applyFilters() {
+            updateDashboard();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-search').value = "";
+            document.getElementById('filter-year').value = "";
+            document.getElementById('filter-budget-type').value = "";
+            document.getElementById('filter-work-type').value = "";
+            document.getElementById('filter-procurement').value = "";
+            updateDashboard();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('filter-sidebar');
+            if (sidebar.classList.contains('hidden')) {
+                sidebar.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('hidden');
+            }
+        }
+
+        function updateDashboard() {
+            const search = document.getElementById('filter-search').value.toLowerCase();
+            const fYear = document.getElementById('filter-year').value;
+            const fBudgetType = document.getElementById('filter-budget-type').value;
+            const fWorkType = document.getElementById('filter-work-type').value;
+            const fProc = document.getElementById('filter-procurement').value;
+
+            let filtered = projects.filter(p => {
+                const pId = String(p.id || "");
+                const pName = String(p.name || "");
+                const matchSearch = pId.toLowerCase().includes(search) || pName.toLowerCase().includes(search);
+                const matchYear = !fYear || String(p.year) === String(fYear);
+                const matchBudgetType = !fBudgetType || p.budgetType === fBudgetType;
+                const matchWorkType = !fWorkType || p.workType === fWorkType;
+                const matchProc = !fProc || p.procurement === fProc;
+                return matchSearch && matchYear && matchBudgetType && matchWorkType && matchProc;
+            });
+
+            let totalBudget = projects.reduce((acc, curr) => acc + (parseFloat(curr.budget) || 0), 0);
+            document.getElementById('kpi-total').innerText = projects.length;
+            document.getElementById('kpi-budget').innerText = totalBudget.toLocaleString('th-TH', { minimumFractionDigits: 2 });
+
+            const matrixContainer = document.getElementById('projects-matrix-container');
+            matrixContainer.innerHTML = "";
+
+            if (filtered.length === 0) {
+                matrixContainer.innerHTML = `<div class="p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">ไม่พบข้อมูลโครงการตามเงื่อนไขที่เลือก</div>`;
+                return;
+            }
+
+            filtered.forEach(p => {
+                const { steps, result } = computeProjectMatrix(p);
+
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6";
+                
+                let stepsHeaderHtml = '';
+                let stepsPlanHtml = '';
+                let stepsActualHtml = '';
+                let stepsDelayHtml = '';
+
+                steps.forEach(s => {
+                    const data = result[s];
+                    stepsHeaderHtml += `<th class="p-3 text-center border-r border-slate-200 font-semibold text-slate-700 text-xs min-w-[120px] bg-slate-100">${s}</th>`;
+                    stepsPlanHtml += `<td class="p-2.5 text-center border-r border-slate-200 text-xs text-slate-600 bg-blue-900/5">${data.plan || '-'}</td>`;
+                    
+                    if (data.actualRaw) {
+                        stepsActualHtml += `<td class="p-2.5 text-center border-r border-slate-200 text-xs bg-emerald-200 font-semibold text-emerald-900">${data.actual || '-'}</td>`;
+                    } else {
+                        stepsActualHtml += `<td class="p-2.5 text-center border-r border-slate-200 text-xs bg-yellow-200 font-semibold text-yellow-900">อยู่ระหว่างดำเนินการ</td>`;
+                    }
+                    
+                    let delayStyle = "text-slate-500";
+                    if (data.delay > 0) {
+                        delayStyle = "text-rose-600 font-bold";
+                    } else if (data.delay <= 0 && data.actualRaw) {
+                        delayStyle = "text-emerald-700 font-semibold";
+                    }
+                    stepsDelayHtml += `<td class="p-2.5 text-center border-r border-slate-200 text-xs ${delayStyle}">${data.statusText || '-'}</td>`;
+                });
+
+                card.innerHTML = `
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-700">เลขที่โครงการ: ${p.id || '-'}</span>
+                                <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md">${p.workType || '-'} (${p.budgetType || '-'}) - ${p.procurement || '-'}</span>
+                            </div>
+                            <h3 class="font-bold text-base mt-1 text-slate-900">ชื่อโครงการ: ${p.name || '-'}</h3>
+                            <p class="text-xs text-slate-500">งบประมาณ: <span class="font-semibold text-slate-800">${Number(p.budget || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })} บาท</span> | ปีงบประมาณ: ${p.year || '-'}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="openProjectModal(true, '${p.id}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-pen-to-square"></i> แก้ไข / กรอกวันจริง
+                            </button>
+                            <button type="button" onclick="deleteProject('${p.id}')" class="bg-rose-600 hover:bg-rose-500 text-white text-xs px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-trash"></i> ลบ
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border-b border-slate-200">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="p-3 text-left bg-slate-200 text-slate-700 text-xs font-bold w-40 border-r border-slate-300">หัวข้อ</th>
+                                    ${stepsHeaderHtml}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-100">
+                                    <td class="p-3 text-xs font-semibold bg-blue-900 text-white border-r border-slate-200">แผน/คาดการณ์</td>
+                                    ${stepsPlanHtml}
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="p-3 text-xs font-semibold bg-emerald-800 text-white border-r border-slate-200">แล้วเสร็จจริง</td>
+                                    ${stepsActualHtml}
+                                </tr>
+                                <tr>
+                                    <td class="p-3 text-xs font-semibold bg-slate-700 text-white border-r border-slate-200">ล่าช้า...... วัน</td>
+                                    ${stepsDelayHtml}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                matrixContainer.appendChild(card);
+            });
+        }
+
+        function fetchDataFromGoogleSheet() {
+            if (!googleScriptUrl || googleScriptUrl.includes("YOUR_DEPLOY_URL_HERE")) return;
+            const syncStatus = document.getElementById('sync-status');
+            syncStatus.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span><span>กำลังซิงค์ข้อมูล...</span>`;
+
+            fetch(googleScriptUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        projects = data.map(item => {
+                            ['stepDurations', 'stepInputModes', 'specificDates', 'actualDates'].forEach(field => {
+                                if (item[field] && typeof item[field] === 'string') {
+                                    try { item[field] = JSON.parse(item[field]); } catch(e) { item[field] = {}; }
+                                } else if (!item[field]) {
+                                    item[field] = {};
+                                }
+                            });
+                            return item;
+                        });
+                        
+                        saveToLocalStorage();
+                        populateYearFilter();
+                        updateDashboard();
+                        syncStatus.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>เชื่อมต่อ Google Sheets แล้ว</span>`;
+                    }
+                })
+                .catch(err => {
+                    console.error("Fetch error:", err);
+                    syncStatus.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>โหลด Sheets ไม่สำเร็จ (ใช้ข้อมูลในเครื่อง)</span>`;
+                });
+        }
+
+        function sendDataToGoogleSheet(projData) {
+            if (!googleScriptUrl || googleScriptUrl.includes("YOUR_DEPLOY_URL_HERE")) return;
+            let payload = { ...projData };
+            if (payload.stepDurations) payload.stepDurations = JSON.stringify(payload.stepDurations);
+            if (payload.stepInputModes) payload.stepInputModes = JSON.stringify(payload.stepInputModes);
+            if (payload.specificDates) payload.specificDates = JSON.stringify(payload.specificDates);
+            if (payload.actualDates) payload.actualDates = JSON.stringify(payload.actualDates);
+
+            fetch(googleScriptUrl, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                showAlert("บันทึกสำเร็จ", "บันทึกข้อมูลลง Google Sheets เรียบร้อยแล้ว", "success");
+                fetchDataFromGoogleSheet();
+            }).catch(err => {
+                console.error("Post error:", err);
+                showAlert("แจ้งเตือน", "การซิงค์ไป Google Sheets ขัดข้อง แต่บันทึกข้อมูลในเครื่องเรียบร้อยแล้ว", "error");
+                populateYearFilter();
+                updateDashboard();
+            });
+        }
+    </script>
+</body>
+</html>
